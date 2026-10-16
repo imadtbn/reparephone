@@ -31,3 +31,13 @@ jobs:
           assert required <= names, f'Missing tables: {required - names}'
           print('D1 migration SQL passed')
           PY
+      - name: Smoke test deployed Cloudflare API
+        run: |
+          curl --fail --silent --show-error https://reparephone.imadtbn-prayer.workers.dev/api/health | tee health.json
+          python - <<'PY'
+          import json
+          d=json.load(open('health.json', encoding='utf-8'))
+          assert d.get('ok') is True, d
+          assert d.get('database') == 'connected', d
+          print('Cloudflare Worker and D1 health check passed')
+          PY
