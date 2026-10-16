@@ -29,14 +29,14 @@
 
 1. ثبّت Node.js ثم شغّل `npm install -D wrangler` في نسخة محلية من المستودع، ثم `npx wrangler login`.
 2. أنشئ قاعدة البيانات: `npx wrangler d1 create reparephone`.
-3. انسخ معرّف قاعدة البيانات الناتج إلى `database_id` في `wrangler.toml` بدل `REPLACE_WITH_D1_DATABASE_ID`.
+3. تم إنشاء قاعدة D1 وربط معرّفها في `wrangler.toml`؛ تحقق من المعرّف إذا نشرت نسخة مستقلة.
 4. طبّق مخطط قاعدة البيانات: `npx wrangler d1 migrations apply reparephone --remote`.
-5. أنشئ مفتاح إدارة قويًا وفريدًا، ثم اضبطه كسرّ: `npx wrangler secret put ADMIN_KEY`.
+5. أنشئ مفتاح إدارة قويًا وفريدًا، ثم اضبطه كسرّ: `npx wrangler secret put ADMIN_KEY --name reparephone`. اختر قيمة طويلة وعشوائية واحفظها في مدير كلمات مرور؛ لا ترسلها في المحادثات ولا تضفها إلى Git.
 6. راجع `ALLOWED_ORIGINS` في `wrangler.toml` إذا كنت ستستخدم نطاقًا مختلفًا.
 7. انشر التطبيق: `npx wrangler deploy`.
-8. افتح عنوان Worker المنشور (عادةً `https://reparephone.<your-subdomain>.workers.dev`) واختبر `/api/health`. يجب أن تظهر استجابة `ok: true` و`database: connected`.
+8. عنوان API المنشور: `https://reparephone.imadtbn-prayer.workers.dev`؛ اختبر `/api/health`. يجب أن تظهر استجابة `ok: true` و`database: connected`.
 9. افتح `/register.html` لإنشاء حساب ورشة، ثم `/admin.html` لتفعيل الاشتراك. أدخل مفتاح الإدارة عند الطلب؛ يُحفظ في `sessionStorage` لتلك الجلسة فقط.
-10. اختبر حسابين منفصلين قبل نقل بيانات حقيقية. تأكد أن الورشة الأولى لا ترى أي سجلات للثانية.
+10. من لوحة Cloudflare أو عبر Wrangler، استبدل سر `ADMIN_KEY` الذي أنشأ أثناء الإعداد بقيمة تختارها أنت، ثم افتح `admin.html` وأدخل القيمة الجديدة. اختبر حسابين منفصلين قبل نقل بيانات حقيقية. تأكد أن الورشة الأولى لا ترى أي سجلات للثانية.
 
 ملف `assets/cloud-config.js` يستخدم عنوان الصفحة الحالية افتراضيًا؛ لذلك يجب فتح النسخة المنشورة من Worker لا من GitHub Pages القديم. GitHub Pages يظل نسخة ثابتة منفصلة ولا يوفر API أو مصادقة سحابية بذاته.
 
