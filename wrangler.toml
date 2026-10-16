@@ -12,7 +12,7 @@ not_found_handling = "single-page-application"
 [[d1_databases]]
 binding = "DB"
 database_name = "reparephone"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "e3f3eeee-2ccd-4df8-8d06-06a03b2b3d4e"
 migrations_dir = "worker/migrations"
 
 [vars]
