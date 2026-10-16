@@ -1,0 +1,43 @@
+name: Validate multi-workshop foundation
+on:
+  push:
+    branches: [feature/multi-workshop-cloudflare]
+  pull_request:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          node --check worker/index.js
+          node --check assets/app.js
+          node --check assets/auth.js
+          node --check assets/admin.js
+          node --check assets/subscription.js
+          node --check assets/cloud-config.js
+      - name: Validate D1 migration SQL
+        run: |
+          python - <<'PY'
+          import sqlite3
+          db = sqlite3.connect(':memory:')
+          db.executescript(open('worker/migrations/0001_initial.sql', encoding='utf-8').read())
+          names = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+          required = {'workshops', 'sessions', 'workspace_data', 'audit_log'}
+          assert required <= names, f'Missing tables: {required - names}'
+          print('D1 migration SQL passed')
+          PY
+      - name: Smoke test deployed Cloudflare API
+        run: |
+          curl --fail --silent --show-error https://reparephone.imadtbn-prayer.workers.dev/api/health | tee health.json
+          python - <<'PY'
+          import json
+          d=json.load(open('health.json', encoding='utf-8'))
+          assert d.get('ok') is True, d
+          assert d.get('database') == 'connected', d
+          print('Cloudflare Worker and D1 health check passed')
+          PY
