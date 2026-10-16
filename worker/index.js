@@ -89,6 +89,8 @@ async function handle(request, env) {
     if (path === "/api/auth/login" && method === "POST") {
       const input = await body(request), username = normalizeUser(input.username), password = String(input.password || "");
       if (!username || !password || username.length > 80 || password.length > 128) return response(request, env, { error: "اسم المستخدم أو كلمة المرور غير صحيحة." }, 400);
+      const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action='auth.login_failed' AND detail=? AND created_at>?").bind(username, new Date(Date.now() - 15 * 60 * 1000).toISOString()).first();
+      if ((recent?.n || 0) >= 8) return response(request, env, { error: "محاولات كثيرة. انتظر 15 دقيقة ثم حاول مجددًا." }, 429);
       const row = await env.DB.prepare("SELECT * FROM workshops WHERE username=?").bind(username).first();
       const storedSalt = row?.password_salt || b64(randomBytes(16));
       const result = await passwordHash(password, storedSalt);
