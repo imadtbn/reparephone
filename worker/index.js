@@ -90,7 +90,7 @@ async function handle(request, env) {
       const input = await body(request), username = normalizeUser(input.username), password = String(input.password || "");
       if (!username || !password || username.length > 80 || password.length > 128) return response(request, env, { error: "اسم المستخدم أو كلمة المرور غير صحيحة." }, 400);
       const row = await env.DB.prepare("SELECT * FROM workshops WHERE username=?").bind(username).first();
-      const storedSalt = row?.password_salt || "invalid-salt-value";
+      const storedSalt = row?.password_salt || b64(randomBytes(16));
       const result = await passwordHash(password, storedSalt);
       if (!row || !(await safeEqual(result.hash, row.password_hash))) {
         await audit(env, null, "auth.login_failed", username);
