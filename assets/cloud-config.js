@@ -1,2 +1,2 @@
-/* Set this to the deployed Worker origin, e.g. https://reparephone.<your-subdomain>.workers.dev */
-window.WARSHA_API_BASE = window.WARSHA_API_BASE || window.location.origin;
+/* Cloudflare Workers API for workshop accounts and D1 workspace storage. */
+window.WARSHA_API_BASE = window.WARSHA_API_BASE || "https://reparephone.imadtbn-prayer.workers.dev";
