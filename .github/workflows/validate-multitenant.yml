@@ -56,7 +56,7 @@ jobs:
           check_page() {
             page="$1"
             marker="$2"
-            body="$(curl --fail --silent --show-error "https://reparephone.imadtbn-prayer.workers.dev/$page")"
+            body="$(curl --fail --silent --show-error "https://imadtbn.github.io/reparephone/$page")"
             if ! printf '%s' "$body" | grep -Fq "$marker"; then
               echo "Expected marker '$marker' missing from $page"
               printf '%s' "$body" | head -c 500
