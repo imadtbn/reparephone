@@ -17,6 +17,7 @@ jobs:
           node --check worker/index.js
           node --check assets/app.js
           node --check assets/auth.js
+          node --check assets/recovery.js
           node --check assets/admin.js
           node --check assets/subscription.js
           node --check assets/cloud-config.js
@@ -36,13 +37,17 @@ jobs:
       - name: Validate D1 migration SQL
         run: |
           python - <<'PY'
+          import glob
           import sqlite3
           db = sqlite3.connect(':memory:')
-          db.executescript(open('worker/migrations/0001_initial.sql', encoding='utf-8').read())
+          migrations = sorted(glob.glob('worker/migrations/*.sql'))
+          for path in migrations:
+              db.executescript(open(path, encoding='utf-8').read())
+              print(f'Applied {path}')
           names = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-          required = {'workshops', 'sessions', 'workspace_data', 'audit_log'}
+          required = {'workshops', 'sessions', 'workspace_data', 'audit_log', 'password_recovery_requests'}
           assert required <= names, f'Missing tables: {required - names}'
-          print('D1 migration SQL passed')
+          print('All D1 migrations passed')
           PY
       - name: Smoke test deployed Cloudflare API
         run: |
