@@ -1,5 +1,5 @@
 'use strict';
-const API_BASE = String(window.WARSHA_API_BASE || '').replace(/\\/$/, '');
+const API_BASE = String(window.WARSHA_API_BASE || '').replace(/\/$/, '');
 const $ = s => document.querySelector(s);
 const form = $('#recovery-form');
 function show(text, kind = 'error') {
