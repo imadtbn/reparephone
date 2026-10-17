@@ -52,10 +52,21 @@ jobs:
           PY
       - name: Smoke test deployed authentication pages
         run: |
-          curl --fail --silent --show-error https://reparephone.imadtbn-prayer.workers.dev/login.html | grep -q 'تسجيل الدخول'
-          curl --fail --silent --show-error https://reparephone.imadtbn-prayer.workers.dev/forgot-password.html | grep -q 'نسيت كلمة المرور'
-          curl --fail --silent --show-error https://reparephone.imadtbn-prayer.workers.dev/change-password.html | grep -q 'تغيير كلمة المرور'
-          echo "Login, recovery, and password-change pages are deployed"
+          set -e
+          check_page() {
+            page="$1"
+            marker="$2"
+            body="$(curl --fail --silent --show-error "https://reparephone.imadtbn-prayer.workers.dev/$page")"
+            if ! printf '%s' "$body" | grep -Fq "$marker"; then
+              echo "Expected marker '$marker' missing from $page"
+              printf '%s' "$body" | head -c 500
+              exit 1
+            fi
+            echo "$page passed"
+          }
+          check_page login.html 'id="login-form"'
+          check_page forgot-password.html 'id="recovery-form"'
+          check_page change-password.html 'id="change-password-form"'
       - name: Smoke test deployed Cloudflare API
         run: |
           curl --fail --silent --show-error https://reparephone.imadtbn-prayer.workers.dev/api/health | tee health.json
