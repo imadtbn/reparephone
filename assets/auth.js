@@ -14,7 +14,7 @@ async function api(path, options = {}) {
 const login = $('#login-form');
 if (login) login.addEventListener('submit', async e => {
   e.preventDefault(); const button = login.querySelector('button[type=submit]'); button.disabled = true; show('جارٍ التحقق…', 'success');
-  try { const values = Object.fromEntries(new FormData(login)); const data = await api('/api/auth/login', { method: 'POST', body: JSON.stringify(values) }); localStorage.setItem(TOKEN_KEY, data.token); location.href = data.workshop.subscriptionStatus === 'active' ? 'index.html' : 'subscription.html'; }
+  try { const values = Object.fromEntries(new FormData(login)); const data = await api('/api/auth/login', { method: 'POST', body: JSON.stringify(values) }); localStorage.setItem(TOKEN_KEY, data.token); location.href = data.workshop.mustChangePassword ? 'change-password.html?required=1' : data.workshop.subscriptionStatus === 'active' ? 'index.html' : 'subscription.html'; }
   catch (error) { show(error.message); } finally { button.disabled = false; }
 });
 const register = $('#register-form');
