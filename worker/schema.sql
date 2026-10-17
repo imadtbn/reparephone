@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS workshops (
   username TEXT NOT NULL UNIQUE COLLATE NOCASE,
   password_salt TEXT NOT NULL,
   password_hash TEXT NOT NULL,
+  must_change_password INTEGER NOT NULL DEFAULT 0 CHECK(must_change_password IN (0,1)),
   name TEXT NOT NULL,
   owner_name TEXT NOT NULL,
   phone TEXT NOT NULL DEFAULT '',
