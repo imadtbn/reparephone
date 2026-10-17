@@ -18,6 +18,7 @@ jobs:
           node --check assets/app.js
           node --check assets/auth.js
           node --check assets/recovery.js
+          node --check assets/change-password.js
           node --check assets/admin.js
           node --check assets/subscription.js
           node --check assets/cloud-config.js
