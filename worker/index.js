@@ -81,9 +81,13 @@ async function handle(request, env) {
       const exists = await env.DB.prepare("SELECT id FROM workshops WHERE username=?").bind(username).first();
       if (exists) return response(request, env, { error: "اسم المستخدم مستخدم بالفعل." }, 409);
       const { salt, hash } = await passwordHash(password), id = crypto.randomUUID(), stamp = now();
-      await env.DB.prepare("INSERT INTO workshops(id,username,password_salt,password_hash,name,owner_name,phone,address,status,subscription_status,subscription_expires_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'','active','pending',NULL,?,?)").bind(id, username, salt, hash, name, ownerName, phone, stamp, stamp).run();
-      await env.DB.prepare("INSERT INTO workspace_data(workshop_id,data_json,revision,updated_at) VALUES(?,?,1,?)").bind(id, JSON.stringify({ version: 1, settings: { name, phone, address: "" }, customers: [], repairs: [], inventory: [], suppliers: [], orders: [], expenses: [], movements: [], updatedAt: stamp }), stamp).run();
-      await audit(env, id, "workshop.registered", "طلب اشتراك جديد");
+      const initialData = JSON.stringify({ version: 1, settings: { name, phone, address: "" }, customers: [], repairs: [], inventory: [], suppliers: [], orders: [], expenses: [], movements: [], updatedAt: stamp });
+      // D1 batch runs these inserts transactionally so a failed registration cannot leave a partial workshop.
+      await env.DB.batch([
+        env.DB.prepare("INSERT INTO workshops(id,username,password_salt,password_hash,name,owner_name,phone,address,status,subscription_status,subscription_expires_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'','active','pending',NULL,?,?)").bind(id, username, salt, hash, name, ownerName, phone, stamp, stamp),
+        env.DB.prepare("INSERT INTO workspace_data(workshop_id,data_json,revision,updated_at) VALUES(?,?,1,?)").bind(id, initialData, stamp),
+        env.DB.prepare("INSERT INTO audit_log(id,workshop_id,action,detail,created_at) VALUES(?,?,?,?,?)").bind(crypto.randomUUID(), id, "workshop.registered", "طلب اشتراك جديد", stamp)
+      ]);
       const row = await env.DB.prepare("SELECT * FROM workshops WHERE id=?").bind(id).first();
       return response(request, env, { ok: true, message: "تم إنشاء الحساب. ينتظر تفعيل الاشتراك من إدارة المنصة.", workshop: publicWorkshop(row) }, 201);
     }
@@ -211,6 +215,8 @@ async function handle(request, env) {
       message: String(error?.message || error),
       stack: String(error?.stack || "").slice(0, 1200)
     });
+    const errorText = String(error?.message || error);
+    if (/UNIQUE constraint failed:\s*workshops\.username/i.test(errorText)) return response(request, env, { error: "اسم المستخدم مستخدم بالفعل. اختر اسمًا آخر." }, 409);
     const message = error?.message === "BODY_TOO_LARGE" ? "حجم الطلب أكبر من الحد المسموح." : error?.message === "INVALID_JSON" ? "صيغة JSON غير صالحة." : "حدث خطأ داخلي. تحقق من إعداد قاعدة البيانات وسجلات الخادم.";
     return response(request, env, { error: message }, error?.message === "BODY_TOO_LARGE" ? 413 : error?.message === "INVALID_JSON" ? 400 : 500);
   }
