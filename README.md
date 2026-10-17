@@ -38,7 +38,7 @@
 9. افتح `/register.html` لإنشاء حساب ورشة، ثم `/admin.html` لتفعيل الاشتراك. أدخل مفتاح الإدارة عند الطلب؛ يُحفظ في `sessionStorage` لتلك الجلسة فقط.
 10. من لوحة Cloudflare أو عبر Wrangler، استبدل سر `ADMIN_KEY` الذي أنشأ أثناء الإعداد بقيمة تختارها أنت، ثم افتح `admin.html` وأدخل القيمة الجديدة. اختبر حسابين منفصلين قبل نقل بيانات حقيقية. تأكد أن الورشة الأولى لا ترى أي سجلات للثانية.
 
-ملف `assets/cloud-config.js` يستخدم عنوان الصفحة الحالية افتراضيًا؛ لذلك يجب فتح النسخة المنشورة من Worker لا من GitHub Pages القديم. GitHub Pages يظل نسخة ثابتة منفصلة ولا يوفر API أو مصادقة سحابية بذاته.
+افتح واجهة المستخدم من `https://imadtbn.github.io/reparephone/`؛ صفحات HTML وملفات CSS/JS تُقدَّم من GitHub Pages، بينما `assets/cloud-config.js` يربطها بواجهة Cloudflare Worker لتسجيل الدخول وحفظ البيانات في D1. عنوان API: `https://reparephone.imadtbn-prayer.workers.dev`. لا تستخدم نسخة HTML محلية غير متصلة بالخادم.
 
 ## ملاحظات تشغيل وأمان
 
