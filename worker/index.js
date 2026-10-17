@@ -156,7 +156,7 @@ async function handle(request, env) {
         const { results } = await env.DB.prepare("SELECT r.id,r.username,r.contact_phone,r.created_at,r.status,w.id AS resolved_workshop_id,w.name AS workshop_name,w.owner_name,w.phone AS registered_phone FROM password_recovery_requests r LEFT JOIN workshops w ON w.id=r.workshop_id WHERE r.status='pending' ORDER BY r.created_at DESC LIMIT 200").all();
         return response(request, env, { requests: results });
       }
-      const recoveryMatch = path.match(/^\\/api\\/admin\\/recovery-requests\\/([0-9a-f-]+)\\/reset$/i);
+      const recoveryMatch = path.match(/^\/api\/admin\/recovery-requests\/([0-9a-f-]+)\/reset$/i);
       if (recoveryMatch && method === "POST") {
         const requestId = recoveryMatch[1];
         const recovery = await env.DB.prepare("SELECT id,workshop_id,status FROM password_recovery_requests WHERE id=?").bind(requestId).first();
