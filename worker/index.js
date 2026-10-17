@@ -1,5 +1,6 @@
 const SESSION_DAYS = 30;
-const PASSWORD_ITERATIONS = 310000;
+// Cloudflare Workers Web Crypto rejects PBKDF2 calls above 100,000 iterations.
+const PASSWORD_ITERATIONS = 100000;
 const MAX_BODY = 1024 * 1024;
 
 function json(data, status = 200, headers = {}) {
@@ -150,6 +151,11 @@ async function handle(request, env) {
     }
     return response(request, env, { error: "المسار غير موجود." }, 404);
   } catch (error) {
+    console.error("reparephone API error", {
+      path: new URL(request.url).pathname,
+      message: String(error?.message || error),
+      stack: String(error?.stack || "").slice(0, 1200)
+    });
     const message = error?.message === "BODY_TOO_LARGE" ? "حجم الطلب أكبر من الحد المسموح." : error?.message === "INVALID_JSON" ? "صيغة JSON غير صالحة." : "حدث خطأ داخلي. تحقق من إعداد قاعدة البيانات وسجلات الخادم.";
     return response(request, env, { error: message }, error?.message === "BODY_TOO_LARGE" ? 413 : error?.message === "INVALID_JSON" ? 400 : 500);
   }
