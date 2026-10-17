@@ -104,6 +104,21 @@ async function handle(request, env) {
       await audit(env, row.id, "auth.login", "تم تسجيل الدخول");
       return response(request, env, { ok: true, ...session });
     }
+    if (path === "/api/auth/recovery-request" && method === "POST") {
+      const input = await body(request);
+      const username = normalizeUser(input.username);
+      const contactPhone = clean(input.phone).slice(0, 40);
+      if (username.length < 3 || username.length > 80 || contactPhone.length < 3) {
+        return response(request, env, { error: "أدخل اسم المستخدم ورقم هاتف للتواصل بشكل صحيح." }, 400);
+      }
+      const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      const recent = await env.DB.prepare("SELECT COUNT(*) AS n FROM password_recovery_requests WHERE username=? AND created_at>?").bind(username, since).first();
+      if ((recent?.n || 0) >= 3) return response(request, env, { error: "تم استلام طلبات كثيرة لهذا الاسم. حاول بعد 15 دقيقة." }, 429);
+      const workshop = await env.DB.prepare("SELECT id FROM workshops WHERE username=?").bind(username).first();
+      await env.DB.prepare("INSERT INTO password_recovery_requests(id,workshop_id,username,contact_phone,status,created_at) VALUES(?,?,?,?, 'pending', ?)").bind(crypto.randomUUID(), workshop?.id || null, username, contactPhone, now()).run();
+      await audit(env, workshop?.id || null, "auth.recovery_requested", username);
+      return response(request, env, { ok: true, message: "إذا تطابق اسم المستخدم مع حساب مسجل، فسيظهر الطلب لدى إدارة المنصة بعد التحقق. تواصل مع الإدارة عبر قناة الدعم المعتادة لتأكيد هويتك واستلام كلمة مرور مؤقتة." });
+    }
     if (path === "/api/auth/logout" && method === "POST") {
       const auth = request.headers.get("Authorization") || "", token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
       if (token) await env.DB.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await digest(token)).run();
@@ -136,6 +151,26 @@ async function handle(request, env) {
       if (path === "/api/admin/workshops" && method === "GET") {
         const { results } = await env.DB.prepare("SELECT id,username,name,owner_name,phone,status,subscription_status,subscription_expires_at,created_at FROM workshops ORDER BY created_at DESC LIMIT 500").all();
         return response(request, env, { workshops: results });
+      }
+      if (path === "/api/admin/recovery-requests" && method === "GET") {
+        const { results } = await env.DB.prepare("SELECT r.id,r.username,r.contact_phone,r.created_at,r.status,w.id AS resolved_workshop_id,w.name AS workshop_name,w.owner_name,w.phone AS registered_phone FROM password_recovery_requests r LEFT JOIN workshops w ON w.id=r.workshop_id WHERE r.status='pending' ORDER BY r.created_at DESC LIMIT 200").all();
+        return response(request, env, { requests: results });
+      }
+      const recoveryMatch = path.match(/^\\/api\\/admin\\/recovery-requests\\/([0-9a-f-]+)\\/reset$/i);
+      if (recoveryMatch && method === "POST") {
+        const requestId = recoveryMatch[1];
+        const recovery = await env.DB.prepare("SELECT id,workshop_id,status FROM password_recovery_requests WHERE id=?").bind(requestId).first();
+        if (!recovery || recovery.status !== "pending") return response(request, env, { error: "طلب الاستعادة غير موجود أو تمت معالجته." }, 404);
+        if (!recovery.workshop_id) return response(request, env, { error: "لم يُعثر على حساب مطابق لاسم المستخدم. تحقق من الاسم مع صاحب الطلب قبل المتابعة." }, 409);
+        const workshop = await env.DB.prepare("SELECT id,username FROM workshops WHERE id=?").bind(recovery.workshop_id).first();
+        if (!workshop) return response(request, env, { error: "حساب الورشة غير موجود." }, 404);
+        const temporaryPassword = b64(randomBytes(18));
+        const { salt, hash } = await passwordHash(temporaryPassword);
+        await env.DB.prepare("UPDATE workshops SET password_salt=?,password_hash=?,updated_at=? WHERE id=?").bind(salt, hash, now(), workshop.id).run();
+        await env.DB.prepare("DELETE FROM sessions WHERE workshop_id=?").bind(workshop.id).run();
+        await env.DB.prepare("UPDATE password_recovery_requests SET status='resolved',resolved_at=? WHERE workshop_id=? AND status='pending'").bind(now(), workshop.id).run();
+        await audit(env, workshop.id, "auth.password_reset", "إعادة تعيين إدارية بعد التحقق من الهوية");
+        return response(request, env, { ok: true, username: workshop.username, temporaryPassword, message: "تم تغيير كلمة المرور وإبطال الجلسات السابقة. سلّم كلمة المرور المؤقتة لصاحب الورشة بعد التحقق من هويته عبر قناة منفصلة." });
       }
       const match = path.match(/^\/api\/admin\/workshops\/([0-9a-f-]+)\/subscription$/i);
       if (match && method === "POST") {
