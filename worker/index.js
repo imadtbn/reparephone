@@ -14,7 +14,7 @@ function cors(request, env) {
 }
 function response(request, env, data, status = 200) { return json(data, status, cors(request, env)); }
 const now = () => new Date().toISOString();
-const normalizeUser = v => String(v || "").trim().toLowerCase();
+const normalizeUser = v => String(v || "").trim().replace(/\s+/g, " ").toLowerCase();
 const clean = v => String(v || "").trim();
 function randomBytes(n = 32) { const a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
 function b64(bytes) { return btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, ""); }
@@ -73,7 +73,7 @@ async function handle(request, env) {
     }
     if (path === "/api/auth/register" && method === "POST") {
       const input = await body(request), username = normalizeUser(input.username), password = String(input.password || ""), name = clean(input.workshopName), phone = clean(input.phone), ownerName = clean(input.ownerName);
-      if (!/^[a-z0-9._-]{3,30}$/.test(username)) return response(request, env, { error: "اسم المستخدم يجب أن يكون 3 إلى 30 حرفًا لاتينيًا أو رقمًا، ويمكن استخدام . _ -" }, 400);
+      if (username.length < 3 || username.length > 30 || !/^[\p{L}\p{N}._ -]+$/u.test(username)) return response(request, env, { error: "اسم المستخدم يجب أن يكون بين 3 و30 حرفًا أو رقمًا، ويمكن استخدام المسافات والنقطة والشرطة." }, 400);
       if (password.length < 10 || password.length > 128) return response(request, env, { error: "كلمة المرور يجب أن تكون 10 أحرف على الأقل." }, 400);
       if (name.length < 2 || name.length > 120 || ownerName.length < 2 || ownerName.length > 100) return response(request, env, { error: "أدخل اسم الورشة واسم المسؤول بشكل صحيح." }, 400);
       if (phone.length > 40) return response(request, env, { error: "رقم الهاتف طويل جدًا." }, 400);
