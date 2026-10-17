@@ -50,6 +50,12 @@ jobs:
           assert required <= names, f'Missing tables: {required - names}'
           print('All D1 migrations passed')
           PY
+      - name: Smoke test deployed authentication pages
+        run: |
+          curl --fail --silent --show-error https://reparephone.imadtbn-prayer.workers.dev/login.html | grep -q 'تسجيل الدخول'
+          curl --fail --silent --show-error https://reparephone.imadtbn-prayer.workers.dev/forgot-password.html | grep -q 'نسيت كلمة المرور'
+          curl --fail --silent --show-error https://reparephone.imadtbn-prayer.workers.dev/change-password.html | grep -q 'تغيير كلمة المرور'
+          echo "Login, recovery, and password-change pages are deployed"
       - name: Smoke test deployed Cloudflare API
         run: |
           curl --fail --silent --show-error https://reparephone.imadtbn-prayer.workers.dev/api/health | tee health.json
