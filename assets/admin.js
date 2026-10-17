@@ -23,7 +23,8 @@ async function loadRecovery() {
 }
 $('#admin-login').addEventListener('submit', async e => { e.preventDefault(); sessionStorage.setItem(KEY, new FormData(e.currentTarget).get('key')); await load(); await loadRecovery(); if (!$('#message').textContent) message('تم الاتصال بلوحة الإدارة.', 'success'); });
 $('#clear-key').addEventListener('click', () => { sessionStorage.removeItem(KEY); $('#workshops').textContent = 'أدخل مفتاح الإدارة لعرض الحسابات.'; message('تم مسح المفتاح من جلسة المتصفح.', 'success'); });
-$('#reload').addEventListener('click', load);\n$('#reload-recovery').addEventListener('click', loadRecovery);
+$('#reload').addEventListener('click', load);
+$('#reload-recovery').addEventListener('click', loadRecovery);
 document.addEventListener('submit', async e => { const form = e.target.closest('.activate'); if (!form) return; e.preventDefault(); const v = Object.fromEntries(new FormData(form)); const button = form.querySelector('button'); button.disabled = true; try { await call('/api/admin/workshops/' + encodeURIComponent(form.dataset.id) + '/subscription', { method: 'POST', body: JSON.stringify({ status: v.status, days: Number(v.days) }) }); message('تم تحديث الاشتراك.', 'success'); await load(); } catch (err) { message(err.message); } finally { button.disabled = false; } });
 document.addEventListener('click', async e => {
   const button = e.target.closest('.reset-password');
