@@ -20,6 +20,8 @@ if (login) login.addEventListener('submit', async e => {
 const register = $('#register-form');
 if (register) register.addEventListener('submit', async e => {
   e.preventDefault(); const values = Object.fromEntries(new FormData(register));
+  values.username = String(values.username || '').trim().replace(/\s+/g, ' ');
+  if (values.username.length < 3 || values.username.length > 30) { show('اسم المستخدم يجب أن يكون بين 3 و30 حرفًا.'); return; }
   if (values.password !== values.confirmPassword) { show('كلمتا المرور غير متطابقتين.'); return; }
   const button = register.querySelector('button[type=submit]'); button.disabled = true; show('جارٍ إنشاء الحساب…', 'success');
   try { const data = await api('/api/auth/register', { method: 'POST', body: JSON.stringify(values) }); show(data.message, 'success'); register.reset(); }
