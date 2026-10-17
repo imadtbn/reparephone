@@ -501,6 +501,7 @@ dialog form { margin: 0; }
 #form-error { color: var(--danger); font-size: 13px; font-weight: 700; }
 #form-error:empty { display: none; }
 #toast {
+  display: none;
   position: fixed;
   z-index: 100;
   right: 18px;
