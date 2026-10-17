@@ -41,7 +41,7 @@ async function body(request) {
   try { return JSON.parse(raw || "{}"); } catch { throw new Error("INVALID_JSON"); }
 }
 function publicWorkshop(row) {
-  return { id: row.id, username: row.username, name: row.name, phone: row.phone || "", address: row.address || "", subscriptionStatus: row.subscription_status, subscriptionExpiresAt: row.subscription_expires_at || null, createdAt: row.created_at };
+  return { id: row.id, username: row.username, name: row.name, phone: row.phone || "", address: row.address || "", subscriptionStatus: row.subscription_status, subscriptionExpiresAt: row.subscription_expires_at || null, mustChangePassword: Boolean(row.must_change_password), createdAt: row.created_at };
 }
 async function getSession(request, env) {
   const auth = request.headers.get("Authorization") || "";
@@ -119,6 +119,26 @@ async function handle(request, env) {
       await audit(env, workshop?.id || null, "auth.recovery_requested", username);
       return response(request, env, { ok: true, message: "إذا تطابق اسم المستخدم مع حساب مسجل، فسيظهر الطلب لدى إدارة المنصة بعد التحقق. تواصل مع الإدارة عبر قناة الدعم المعتادة لتأكيد هويتك واستلام كلمة مرور مؤقتة." });
     }
+    if (path === "/api/auth/change-password" && method === "POST") {
+      const row = await getSession(request, env);
+      if (!row) return response(request, env, { error: "انتهت الجلسة. سجّل الدخول مجددًا." }, 401);
+      const input = await body(request);
+      const currentPassword = String(input.currentPassword || "");
+      const newPassword = String(input.newPassword || "");
+      if (currentPassword.length < 1 || currentPassword.length > 128 || newPassword.length < 10 || newPassword.length > 128) {
+        return response(request, env, { error: "أدخل كلمة المرور الحالية، واجعل الجديدة 10 أحرف على الأقل." }, 400);
+      }
+      const currentHash = await passwordHash(currentPassword, row.password_salt);
+      if (!(await safeEqual(currentHash.hash, row.password_hash))) return response(request, env, { error: "كلمة المرور الحالية غير صحيحة." }, 401);
+      const next = await passwordHash(newPassword);
+      const stamp = now();
+      await env.DB.prepare("UPDATE workshops SET password_salt=?,password_hash=?,must_change_password=0,updated_at=? WHERE id=?").bind(next.salt, next.hash, stamp, row.id).run();
+      await env.DB.prepare("DELETE FROM sessions WHERE workshop_id=?").bind(row.id).run();
+      const updatedWorkshop = await env.DB.prepare("SELECT * FROM workshops WHERE id=?").bind(row.id).first();
+      const session = await issueSession(request, env, updatedWorkshop);
+      await audit(env, row.id, "auth.password_changed", "تغيير كلمة المرور");
+      return response(request, env, { ok: true, ...session, message: "تم تغيير كلمة المرور بنجاح." });
+    }
     if (path === "/api/auth/logout" && method === "POST") {
       const auth = request.headers.get("Authorization") || "", token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
       if (token) await env.DB.prepare("DELETE FROM sessions WHERE token_hash=?").bind(await digest(token)).run();
@@ -166,7 +186,7 @@ async function handle(request, env) {
         if (!workshop) return response(request, env, { error: "حساب الورشة غير موجود." }, 404);
         const temporaryPassword = b64(randomBytes(18));
         const { salt, hash } = await passwordHash(temporaryPassword);
-        await env.DB.prepare("UPDATE workshops SET password_salt=?,password_hash=?,updated_at=? WHERE id=?").bind(salt, hash, now(), workshop.id).run();
+        await env.DB.prepare("UPDATE workshops SET password_salt=?,password_hash=?,must_change_password=1,updated_at=? WHERE id=?").bind(salt, hash, now(), workshop.id).run();
         await env.DB.prepare("DELETE FROM sessions WHERE workshop_id=?").bind(workshop.id).run();
         await env.DB.prepare("UPDATE password_recovery_requests SET status='resolved',resolved_at=? WHERE workshop_id=? AND status='pending'").bind(now(), workshop.id).run();
         await audit(env, workshop.id, "auth.password_reset", "إعادة تعيين إدارية بعد التحقق من الهوية");
